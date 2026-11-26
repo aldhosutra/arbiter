@@ -1,6 +1,11 @@
-# Arbiter
+<h1 align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="logo/final/arbiter-horizontal-white.svg">
+    <img src="logo/final/arbiter-horizontal.svg" alt="Arbiter" width="320">
+  </picture>
+</h1>
 
-One heavy command at a time, across every coding agent session on your machine.
+<p align="center">One heavy command at a time, across every coding agent session on your machine.</p>
 
 Running three or four agent sessions on an 8 GB laptop works fine until two of them start a build or a test suite at the same moment. Then the machine swaps itself to death. Arbiter puts all heavy shell commands from all sessions in one queue. Light commands like `ls` or `git status` still run instantly, and dev servers are left alone.
 

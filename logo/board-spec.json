@@ -1,0 +1,28 @@
+{
+  "brand": "Arbiter",
+  "tagline": "One heavy command at a time",
+  "brief": "A CLI that puts every heavy shell command from every coding-agent session on one machine into a single queue, so parallel builds and test runs can't swap a laptop to death. It should feel precise, fair and calm.",
+  "adjectives": ["precise", "fair", "calm", "technical"],
+  "criteria": "Distinct from terminal-prompt and gear marks, recognisable at 16 px, works in one colour, says 'many requests, one grant'.",
+  "industry": "software",
+  "nav": ["Install", "How it works", "GitHub"],
+  "brand_color": "#0FA36B",
+  "greyscale": false,
+  "designer": "Arbiter",
+  "round": 2,
+  "concepts": [
+    {
+      "name": "Split Grant",
+      "symbol": "final/arbiter-symbol.svg",
+      "lockup": "final/arbiter-horizontal.svg",
+      "idea": "A circle split in two: four requests on the left, the gate on the right, and one dot that gets the grant.",
+      "rationale": [
+        "Borrowed from the hardware arbiter: many request lines, one grant",
+        "One circle, one split, one dot: holds at 16 px (3-stripe small cut below 24 px)",
+        "Grant green is the 'go' signal, rare among dev-tool blues"
+      ]
+    }
+  ],
+  "recommendation": "Split Grant in ink #14161A with Grant Green #0FA36B for icon tiles and accents.",
+  "next_steps": ["Add the logo to the README header", "Use web icons on any docs site", "Run a trademark search"]
+}

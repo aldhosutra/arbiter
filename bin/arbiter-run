@@ -1,0 +1,31 @@
+#!/usr/bin/perl
+# Runs one shell command while holding Arbiter's global lock.
+# The lock is a kernel flock, so it is released whenever this process dies:
+# a crashed or killed session can never leave a stale lock behind.
+use strict;
+use warnings;
+use Fcntl qw(:flock);
+
+my $cmd = shift // die "usage: arbiter-run '<command>'\n";
+my $path = $ENV{ARBITER_LOCK} || '/tmp/arbiter.lock';
+
+open(my $lock, '+>>', $path) or die "arbiter: cannot open $path: $!\n";
+unless (flock($lock, LOCK_EX | LOCK_NB)) {
+    seek($lock, 0, 0);
+    my $holder = <$lock> // 'another command';
+    chomp $holder;
+    print STDERR "arbiter: waiting for heavy command to finish: $holder\n";
+    flock($lock, LOCK_EX) or die "arbiter: flock: $!\n";
+}
+truncate($lock, 0);
+syswrite($lock, "pid $$: $cmd\n");
+
+my $pid = fork() // die "arbiter: fork: $!\n";
+if ($pid == 0) {
+    close($lock); # children (and daemons they spawn) must not hold the lock
+    exec($ENV{SHELL} || '/bin/sh', '-c', $cmd) or die "arbiter: exec: $!\n";
+}
+# Forward termination so a killed wrapper never leaves the heavy command running unlocked.
+$SIG{$_} = sub { kill $_[0], $pid } for qw(TERM HUP INT);
+waitpid($pid, 0);
+exit($? & 127 ? 128 + ($? & 127) : $? >> 8);

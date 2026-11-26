@@ -1,0 +1,12 @@
+{
+  "name": "@aldhosutra/arbiter",
+  "version": "0.1.0",
+  "description": "One heavy command at a time across all your coding agent sessions",
+  "type": "module",
+  "bin": { "arbiter": "bin/arbiter.js" },
+  "files": ["bin", "src", "FOR_AGENTS.md"],
+  "scripts": { "test": "node --test" },
+  "engines": { "node": ">=18" },
+  "os": ["darwin", "linux"],
+  "license": "MIT"
+}

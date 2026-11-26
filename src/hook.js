@@ -19,16 +19,17 @@ const retryReason = (cmd) =>
 const backgroundReason = (flag) =>
   `Arbiter: this looks long-running (a server or watcher). Rerun the same command with ${flag}: true. More: ${DOCS}.`;
 
-// On/off switch shared by every harness: { enabled, until }. After `until`, the setting flips back.
+// Settings shared by every harness: { enabled, until, learn }. After `until`, `enabled` flips back.
+// `learn` = use the ledger to relabel heavy commands (measuring and the server lock release always run).
 const HOME = () => process.env.ARBITER_HOME || path.join(os.homedir(), '.config/arbiter');
 export const STATE = () => path.join(HOME(), 'state.json');
 export const LEDGER = () => path.join(HOME(), 'ledger.jsonl');
 
 export function readState() {
   try {
-    const { enabled = true, until = null } = JSON.parse(fs.readFileSync(STATE(), 'utf8'));
-    return until && Date.now() > until ? { enabled: !enabled, until: null } : { enabled, until };
-  } catch { return { enabled: true, until: null }; } // no state file yet = on
+    const { enabled = true, until = null, learn = true } = JSON.parse(fs.readFileSync(STATE(), 'utf8'));
+    return until && Date.now() > until ? { enabled: !enabled, until: null, learn } : { enabled, until, learn };
+  } catch { return { enabled: true, until: null, learn: true }; } // no state file yet = on
 }
 
 // Learned from bin/arbiter-run's measurements of this exact command in this folder.
@@ -53,7 +54,7 @@ const real = (p) => { try { return fs.realpathSync(p); } catch { return p; } };
 // The fixed lists first; the ledger only refines what they call heavy.
 export function label(command, { background = false, cwd = process.cwd() } = {}) {
   const kind = classify(command, { background });
-  return kind === 'heavy' ? learned(command, real(cwd)) ?? kind : kind;
+  return kind === 'heavy' && readState().learn ? learned(command, real(cwd)) ?? kind : kind;
 }
 
 // Decide once for every harness. `canBackground` = the harness has a background flag to ask for.

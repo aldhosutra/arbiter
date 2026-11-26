@@ -64,7 +64,7 @@ Each heavy command is measured while it runs: how long it takes, the peak memory
 - **Server**: if the command opens a listening port, Arbiter releases the queue right away so other sessions are not blocked until the server is killed. For the next 30 days the command counts as a foreground daemon.
 - **Light**: if the command's last 3 runs this week all exited 0 in under 2 s and used under 200 MB, it counts as light. Light commands are not measured, so after a week it goes back to heavy and is measured again.
 
-The ledger only changes commands the fixed lists call heavy. `arbiter classify` shows the learned label for the current folder. To forget what was learned, delete lines from the ledger or the whole file.
+The ledger only changes commands the fixed lists call heavy. `arbiter classify` shows the learned label for the current folder. To forget what was learned, delete lines from the ledger or the whole file. To stop using the ledger, run `arbiter config learn off`. Measuring and releasing the queue for servers keep working. `arbiter config` lists the settings.
 
 ## How the queue works
 

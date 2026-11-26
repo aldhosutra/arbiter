@@ -34,6 +34,19 @@ test('a run that opened a port makes it a foreground daemon, never the reverse',
   assert.equal(label('ls'), 'light'); // the ledger never overrides the fixed lists
 });
 
+test('config learn off ignores the ledger, and on/off keep the learn setting', () => {
+  const cli = (...a) => execFileSync(process.execPath, ['bin/arbiter.js', ...a]).toString();
+  write([{ cmd: 'make lint' }, { cmd: 'make lint' }, { cmd: 'make lint' }]);
+  assert.match(cli('config', 'learn', 'off'), /learn off/);
+  assert.equal(label('make lint'), 'heavy');
+  assert.match(cli('off', '2h'), /learn off/); // switching the queue keeps learn
+  assert.match(cli('on'), /arbiter is on\nlearn off/);
+  assert.equal(cli('config'), 'learn off\n');
+  cli('config', 'learn', 'on');
+  assert.equal(label('make lint'), 'light');
+  assert.throws(() => execFileSync(process.execPath, ['bin/arbiter.js', 'config', 'learn', 'maybe'], { stdio: 'pipe' }));
+});
+
 const run = (cmd) => execFileSync('/bin/sh', ['-c', wrap(cmd)], { env: { ...process.env, ARBITER_LOCK: path.join(process.env.ARBITER_HOME, 'lock') } });
 const lines = () => fs.readFileSync(LEDGER(), 'utf8').trim().split('\n').map((l) => JSON.parse(l));
 

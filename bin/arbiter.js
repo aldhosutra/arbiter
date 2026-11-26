@@ -64,6 +64,14 @@ export const Arbiter = async () => ({
   return file;
 }
 
+const CONFIG = ['learn']; // on/off settings stored in state.json
+
+// Merge into the current settings so each switch keeps the others.
+function writeState(change) {
+  fs.mkdirSync(path.dirname(STATE()), { recursive: true });
+  fs.writeFileSync(STATE(), JSON.stringify({ ...readState(), ...change }) + '\n');
+}
+
 function die(msg) { console.error(`arbiter: ${msg}`); process.exit(1); }
 
 const [cmd, arg, ...rest] = process.argv.slice(2);
@@ -82,13 +90,20 @@ switch (cmd) {
     const m = arg?.match(/^(\d+)([mhd])$/);
     if (arg && !m) die(`usage: arbiter ${cmd} [duration like 30m, 2h, 1d]`);
     const until = m ? Date.now() + m[1] * { m: 6e4, h: 36e5, d: 864e5 }[m[2]] : null;
-    fs.mkdirSync(path.dirname(STATE()), { recursive: true });
-    fs.writeFileSync(STATE(), JSON.stringify({ enabled: cmd === 'on', until }) + '\n');
+    writeState({ enabled: cmd === 'on', until });
   } // falls through to print the new status
   case 'status': {
-    const { enabled, until } = readState();
+    const { enabled, until, learn } = readState();
     const back = until ? `, turns ${enabled ? 'off' : 'on'} at ${new Date(until).toLocaleString()}` : '';
-    console.log(`arbiter is ${enabled ? 'on' : 'off'}${back}`);
+    console.log(`arbiter is ${enabled ? 'on' : 'off'}${back}\nlearn ${learn ? 'on' : 'off'}`);
+    break;
+  }
+  case 'config': {
+    const [value] = rest;
+    if (!arg) { for (const k of CONFIG) console.log(`${k} ${readState()[k] ? 'on' : 'off'}`); break; }
+    if (!CONFIG.includes(arg) || !['on', 'off'].includes(value)) die(`usage: arbiter config <${CONFIG.join('|')}> on|off`);
+    writeState({ [arg]: value === 'on' });
+    console.log(`${arg} ${value}`);
     break;
   }
   case 'classify':
@@ -109,6 +124,7 @@ switch (cmd) {
   arbiter uninstall <harness|all>
   arbiter on|off [30m|2h|1d]     switch the queue for all sessions, optionally only for a while
   arbiter status
+  arbiter config [learn on|off]  show settings; learn = relabel heavy commands from measured runs (default on)
   arbiter classify <command>     show how a command is treated (light|heavy|daemon|foreground-daemon)
   arbiter hook <harness>         (called by the harness)`);
 }

@@ -3,8 +3,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { classify } from '../src/classify.js';
-import { adapters, readState, STATE } from '../src/hook.js';
+import { adapters, label, readState, STATE } from '../src/hook.js';
 
 const SELF = fileURLToPath(import.meta.url);
 const HOME = os.homedir();
@@ -93,7 +92,7 @@ switch (cmd) {
     break;
   }
   case 'classify':
-    console.log(classify([arg, ...rest].join(' ')));
+    console.log(label([arg, ...rest].join(' ')));
     break;
   case 'install':
   case 'uninstall': {

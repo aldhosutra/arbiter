@@ -2,9 +2,16 @@
 # Runs one shell command while holding Arbiter's global lock.
 # The lock is a kernel flock, so it is released whenever this process dies:
 # a crashed or killed session can never leave a stale lock behind.
+# It also measures the command (time, peak memory, listening ports) into the ledger,
+# which src/hook.js reads to learn which commands are really light or are servers.
 use strict;
 use warnings;
 use Fcntl qw(:flock);
+use POSIX qw(WNOHANG);
+use Time::HiRes qw(time sleep);
+use Cwd qw(getcwd);
+use File::Path qw(make_path);
+use JSON::PP;
 
 my $cmd = shift // die "usage: arbiter-run '<command>'\n";
 my $path = $ENV{ARBITER_LOCK} || '/tmp/arbiter.lock';
@@ -20,6 +27,7 @@ unless (flock($lock, LOCK_EX | LOCK_NB)) {
 truncate($lock, 0);
 syswrite($lock, "pid $$: $cmd\n");
 
+my $start = time;
 my $pid = fork() // die "arbiter: fork: $!\n";
 if ($pid == 0) {
     close($lock); # children (and daemons they spawn) must not hold the lock
@@ -27,5 +35,52 @@ if ($pid == 0) {
 }
 # Forward termination so a killed wrapper never leaves the heavy command running unlocked.
 $SIG{$_} = sub { kill $_[0], $pid } for qw(TERM HUP INT);
-waitpid($pid, 0);
-exit($? & 127 ? 128 + ($? & 127) : $? >> 8);
+
+my ($peak, $listen, $tick) = (0, 0, 0);
+# Every 0.5 s: sum RSS over the command's process tree, and look for a listening TCP port.
+sub sample {
+    my (%kids, %rss);
+    for (`ps -A -o pid= -o ppid= -o rss=`) {
+        my ($p, $pp, $r) = split;
+        push @{ $kids{$pp} }, $p;
+        $rss{$p} = $r;
+    }
+    my @pids = ($pid);
+    for (my $i = 0; $i < @pids; $i++) { push @pids, @{ $kids{ $pids[$i] } // [] } }
+    my $mb = 0;
+    $mb += ($rss{$_} // 0) / 1024 for @pids;
+    $peak = $mb if $mb > $peak;
+    return if $listen;
+    my $ports = `lsof -nP -a -iTCP -sTCP:LISTEN -t -p @{[join ',', @pids]} 2>/dev/null`;
+    return unless $ports =~ /\d/;
+    # A server never finishes, so holding the lock would block every other session until it is killed.
+    $listen = 1;
+    record(undef);
+    truncate($lock, 0);
+    flock($lock, LOCK_UN);
+    print STDERR "arbiter: this command is a server, so the queue was released. Next time run it in the background.\n";
+}
+until (waitpid($pid, WNOHANG)) {
+    sleep 0.05;
+    sample() if ++$tick % 10 == 0;
+}
+my $exit = $? & 127 ? 128 + ($? & 127) : $? >> 8;
+record($exit) unless $listen;
+exit($exit);
+
+sub record {
+    my ($code) = @_;
+    my $dir = $ENV{ARBITER_HOME} || "$ENV{HOME}/.config/arbiter";
+    my $file = "$dir/ledger.jsonl";
+    eval { make_path($dir) };
+    rename($file, "$file.1") if (-s $file // 0) > 1_000_000; # keeps the file small; old history is re-learned
+    my ($c, $d) = ($cmd, getcwd() // '');
+    utf8::decode($_) for $c, $d;
+    my $line = JSON::PP->new->utf8->canonical->encode({
+        t => int(time), cwd => $d, cmd => $c, s => 0 + sprintf('%.1f', time - $start), mb => int($peak),
+        exit => $code, listen => $listen ? JSON::PP::true : JSON::PP::false,
+    });
+    open(my $fh, '>>', $file) or return;
+    print $fh "$line\n";
+    close($fh);
+}

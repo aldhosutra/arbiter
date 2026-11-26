@@ -46,7 +46,7 @@ The switch applies to all sessions and all harnesses at once and takes effect on
 
 ## How commands are sorted
 
-Every shell command an agent tries to run gets one of four labels. The rules are fixed lists in [`src/classify.js`](src/classify.js), so the same command always gets the same label. Check any command with `arbiter classify "<command>"`.
+Every shell command an agent tries to run gets one of four labels. The rules are fixed lists in [`src/classify.js`](src/classify.js), refined by measurement (see below). Check any command with `arbiter classify "<command>"`.
 
 | Label | Rule | What happens |
 |---|---|---|
@@ -56,6 +56,15 @@ Every shell command an agent tries to run gets one of four labels. The rules are
 | heavy | Anything else | Waits for the shared lock |
 
 Unknown commands count as heavy on purpose. If a light command is labelled heavy, it waits a few seconds. If a heavy one were labelled light, your machine could crash.
+
+### Learning from measurements
+
+Each heavy command is measured while it runs: how long it takes, the peak memory of its whole process tree, and whether it opens a listening TCP port. Every run adds one line to `~/.config/arbiter/ledger.jsonl`, keyed by the exact command and the folder it ran in. Arbiter learns only from these measurements. It never asks an agent what a command is.
+
+- **Server**: if the command opens a listening port, Arbiter releases the queue right away so other sessions are not blocked until the server is killed. For the next 30 days the command counts as a foreground daemon.
+- **Light**: if the command's last 3 runs this week all exited 0 in under 2 s and used under 200 MB, it counts as light. Light commands are not measured, so after a week it goes back to heavy and is measured again.
+
+The ledger only changes commands the fixed lists call heavy. `arbiter classify` shows the learned label for the current folder. To forget what was learned, delete lines from the ledger or the whole file.
 
 ## How the queue works
 

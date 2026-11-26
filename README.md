@@ -13,6 +13,16 @@ arbiter install all        # or: claude, codex, gemini, cursor, opencode
 
 Codex asks you to trust new hooks once: run `/hooks` inside Codex after installing.
 
+If you use more than one Claude Code or Codex profile, install once per profile. Set the same variable the harness reads:
+
+```sh
+arbiter install claude                                       # ~/.claude
+CLAUDE_CONFIG_DIR=~/.claude-personal arbiter install claude  # another profile
+CODEX_HOME=~/.codex-work arbiter install codex
+```
+
+All profiles share one queue, so a heavy command in one profile waits for heavy commands in any other.
+
 To remove it: `arbiter uninstall all`. Before editing a config file, Arbiter saves the old version next to it as `<file>.arbiter.bak`.
 
 Requires macOS or Linux, Node 18+, and `perl` (preinstalled on both).

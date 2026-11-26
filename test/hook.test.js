@@ -76,3 +76,11 @@ test('install/uninstall round-trips and keeps existing settings', () => {
   run('uninstall');
   assert.deepEqual(JSON.parse(fs.readFileSync(settings, 'utf8')).hooks.PreToolUse, [{ matcher: 'Edit', hooks: [] }]);
 });
+
+test('install follows CLAUDE_CONFIG_DIR profiles', () => {
+  const home = fs.mkdtempSync(path.join(os.tmpdir(), 'arbiter-home-'));
+  const profile = path.join(home, '.claude-personal');
+  execFileSync(process.execPath, ['bin/arbiter.js', 'install', 'claude'], { env: { ...process.env, HOME: home, CLAUDE_CONFIG_DIR: profile } });
+  assert.equal(JSON.parse(fs.readFileSync(path.join(profile, 'settings.json'), 'utf8')).hooks.PreToolUse.length, 1);
+  assert.ok(!fs.existsSync(path.join(home, '.claude/settings.json')));
+});

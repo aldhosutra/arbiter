@@ -13,11 +13,13 @@ const q = (s) => `'${s.replace(/'/g, `'\\''`)}'`;
 const hookCmd = (h) => `${q(process.execPath)} ${q(SELF)} hook ${h}`;
 const isOurs = (entry) => JSON.stringify(entry).includes(`${path.basename(SELF)}' hook `);
 
+// Profile folders: each harness's own env var picks the config dir, same as the harness itself does.
+const dir = (envVar, fallback) => process.env[envVar] || path.join(HOME, fallback);
 const JSON_TARGETS = {
-  claude: { file: '.claude/settings.json', event: 'PreToolUse', entry: { matcher: 'Bash', hooks: [{ type: 'command', command: hookCmd('claude') }] } },
-  codex: { file: '.codex/hooks.json', event: 'PreToolUse', entry: { matcher: 'Bash', hooks: [{ type: 'command', command: hookCmd('codex') }] } },
-  gemini: { file: '.gemini/settings.json', event: 'BeforeTool', entry: { matcher: 'run_shell_command', hooks: [{ type: 'command', command: hookCmd('gemini') }] } },
-  cursor: { file: '.cursor/hooks.json', event: 'beforeShellExecution', entry: { command: hookCmd('cursor') }, base: { version: 1 } },
+  claude: { file: path.join(dir('CLAUDE_CONFIG_DIR', '.claude'), 'settings.json'), event: 'PreToolUse', entry: { matcher: 'Bash', hooks: [{ type: 'command', command: hookCmd('claude') }] } },
+  codex: { file: path.join(dir('CODEX_HOME', '.codex'), 'hooks.json'), event: 'PreToolUse', entry: { matcher: 'Bash', hooks: [{ type: 'command', command: hookCmd('codex') }] } },
+  gemini: { file: path.join(HOME, '.gemini/settings.json'), event: 'BeforeTool', entry: { matcher: 'run_shell_command', hooks: [{ type: 'command', command: hookCmd('gemini') }] } },
+  cursor: { file: path.join(HOME, '.cursor/hooks.json'), event: 'beforeShellExecution', entry: { command: hookCmd('cursor') }, base: { version: 1 } },
 };
 const OPENCODE_PLUGIN = '.config/opencode/plugins/arbiter.js';
 const HARNESSES = [...Object.keys(JSON_TARGETS), 'opencode'];
@@ -52,7 +54,7 @@ export const Arbiter = async () => ({
     return file;
   }
   const t = JSON_TARGETS[harness];
-  const file = path.join(HOME, t.file);
+  const file = t.file;
   if (!on && !fs.existsSync(file)) return file;
   editJson(file, t.base, (data) => {
     data.hooks ??= {};
